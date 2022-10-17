@@ -11,9 +11,16 @@
             img {
                 width: 16px;
             }
+            .exit {
+                position: absolute;
+                right: 15px;
+            }
         </style>
     </head>
     <body>
+        <form class="exit" method="post">
+            <input type="submit" name="exit" value="Выход"/>
+        </form>
         <b>${date}</b>
         <h1>${currentPath}</h1>
         <hr>

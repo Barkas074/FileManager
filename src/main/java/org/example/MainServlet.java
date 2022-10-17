@@ -17,6 +17,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 @WebServlet(urlPatterns = "/")
 public class MainServlet extends HttpServlet {
@@ -37,13 +38,27 @@ public class MainServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String path = req.getParameter("path");
-        if (path == null) {
-            path = "H:\\IdeaProjects\\FileManager";
+        UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        if (user == null) {
+            resp.sendRedirect("/login");
+            return;
         }
+
+        String path = req.getParameter("path");
+
+        String defaultPath = System.getProperty("os.name").toLowerCase().contains("win") ? ("H:\\" + user.getLogin() + "\\") : ("/home/" + user.getLogin() + "/");
+        if (path == null || !path.startsWith(defaultPath)) {
+            path = defaultPath;
+        }
+
         path = path.replaceAll("%20", " ");
         File file = new File(path);
         Path currentPath = file.toPath();
+
+        if (!Files.exists(currentPath)) {
+            Files.createDirectories(currentPath);
+        }
+
         if (Files.isDirectory(currentPath)) {
             req.setAttribute("date", new SimpleDateFormat("dd.MM.yyyy HH:mm:ss").format(new Date()));
             req.setAttribute("currentPath", currentPath.toString());
@@ -56,8 +71,12 @@ public class MainServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (req.getParameter("exit") != null) {
+            UserRepository.USER_REPOSITORY.removeUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"));
+            CookieUtil.addCookie(resp, "JSESSIONID", null);
+            resp.sendRedirect("/");
+        }
     }
 
     private void showFiles(HttpServletRequest req, Path currentPath) throws IOException{
