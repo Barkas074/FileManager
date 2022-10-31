@@ -37,18 +37,17 @@
             button {
                 cursor: pointer;
             }
-        </style>
+    </style>
 </head>
 <body>
-<form method="post">
-    <label>Email:</label>
-    <input type="text" name="email">
-    <label>Логин:</label>
-    <input type="text" name="login">
-    <label>Пароль:</label>
-    <input type="password" name="password">
-    <button type="submit">Регистрация</button>
-</form>
-<a href="/login">Войти</a>
+    <div>
+        <form method="post">
+            <label>Email:</label><input type="text" name="email">
+            <label>Логин:</label><input type="text" name="login">
+            <label>Пароль:</label><input type="password" name="password">
+            <button type="submit">Регистрация</button>
+        </form>
+        <a href="${login}">Войти</a>
+    </div>
 </body>
 </html>

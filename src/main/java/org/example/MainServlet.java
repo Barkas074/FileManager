@@ -9,6 +9,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.swing.filechooser.FileSystemView;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,9 +18,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
-@WebServlet(urlPatterns = "/")
+@WebServlet(urlPatterns = "")
 public class MainServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -40,13 +40,14 @@ public class MainServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
         if (user == null) {
-            resp.sendRedirect("/login");
+            resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
 
+        String pathTomcat = FileSystemView.getFileSystemView().getHomeDirectory().getPath();
         String path = req.getParameter("path");
+        String defaultPath = System.getProperty("os.name").toLowerCase().contains("win") ? ("H:\\" + user.getLogin() + "\\") : (pathTomcat + "/usr/" + user.getLogin() + "/");
 
-        String defaultPath = System.getProperty("os.name").toLowerCase().contains("win") ? ("H:\\" + user.getLogin() + "\\") : ("/home/" + user.getLogin() + "/");
         if (path == null || !path.startsWith(defaultPath)) {
             path = defaultPath;
         }
@@ -75,7 +76,7 @@ public class MainServlet extends HttpServlet {
         if (req.getParameter("exit") != null) {
             UserRepository.USER_REPOSITORY.removeUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"));
             CookieUtil.addCookie(resp, "JSESSIONID", null);
-            resp.sendRedirect("/");
+            resp.sendRedirect(req.getContextPath() + "/login");
         }
     }
 

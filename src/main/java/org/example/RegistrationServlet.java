@@ -30,9 +30,10 @@ public class RegistrationServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
         if (user != null) {
-            resp.sendRedirect("/");
+            resp.sendRedirect(req.getContextPath() + "/");
             return;
         }
+        req.setAttribute("login", req.getContextPath() + "/login");
 
         RequestDispatcher requestDispatcher = req.getRequestDispatcher("registration.jsp");
         requestDispatcher.forward(req, resp);
@@ -51,6 +52,6 @@ public class RegistrationServlet extends HttpServlet {
         UserService user = new UserService(login, password, email);
         UserRepository.USER_REPOSITORY.addUser(user);
         UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
-        resp.sendRedirect("/");
+        resp.sendRedirect(req.getContextPath() + "/");
     }
 }

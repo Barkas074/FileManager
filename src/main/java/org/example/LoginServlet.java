@@ -33,6 +33,7 @@ public class LoginServlet extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/");
             return;
         }
+        req.setAttribute("registration", req.getContextPath() + "/registration");
 
         RequestDispatcher requestDispatcher = req.getRequestDispatcher("login.jsp");
         requestDispatcher.forward(req, resp);
@@ -49,11 +50,11 @@ public class LoginServlet extends HttpServlet {
 
         UserService user = UserRepository.USER_REPOSITORY.getUserByLogin(login);
         if (user == null || !user.getPassword().equals(password)) {
-            resp.sendRedirect("/login");
+            resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
 
         UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
-        resp.sendRedirect("/");
+        resp.sendRedirect(req.getContextPath() + "/");
     }
 }

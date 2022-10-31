@@ -40,15 +40,13 @@
     </style>
 </head>
 <body>
-<div>
-<form method="post">
-    <label>Логин:</label>
-    <input type="text" name="login">
-    <label>Пароль:</label>
-    <input type="password" name="password">
-    <button type="submit">Войти</button>
-</form>
-<a href="/registration">Регистрация</a>
-</div>
+    <div>
+        <form method="post">
+            <label>Логин:</label><input type="text" name="login">
+            <label>Пароль:</label><input type="password" name="password">
+            <button type="submit">Войти</button>
+        </form>
+        <a href="${registration}">Регистрация</a>
+    </div>
 </body>
 </html>
