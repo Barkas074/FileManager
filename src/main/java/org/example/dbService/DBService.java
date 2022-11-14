@@ -1,34 +1,52 @@
 package org.example.dbService;
 
 import org.example.UserService;
-
-import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
-import java.sql.Driver;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import org.hibernate.HibernateException;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.service.ServiceRegistry;
 
 public class DBService {
-    private final Connection connection;
+    private static final String hibernate_show_sql = "true";
+    private static final String hibernate_hbm2ddl_auto = "update";
+    private final SessionFactory sessionFactory;
 
     private enum Task {ADDUSER, ADDUSERBYSESSION, REMOVEUSERBYSESSION, CONTAINSUSERBYLOGIN}
 
     public DBService() {
-        this.connection = getMysqlConnection();
+        Configuration configuration = getMySqlConfiguration();
+        sessionFactory = createSessionFactory(configuration);
     }
 
-    public UserService getUser(String filter, String arg) throws DBException {
+    public UserService getUser(String login) throws DBException {
         try {
-            UsersDAO dao = new UsersDAO(connection);
-            dao.createTable();
-            return (dao.getUser(filter, arg));
-        } catch (SQLException e) {
+            Session session = sessionFactory.openSession();
+            UsersDAO dao = new UsersDAO(session);
+            UserService user = dao.getUser(login);
+            session.close();
+            return user;
+        } catch (HibernateException e) {
             throw new DBException(e);
         }
     }
 
-    public void addUser(String login, String email, String password) throws DBException {
-        transaction(Task.ADDUSER, login, email, password, null, null);
+    public UserService getUserBySession(String sessionString) throws DBException {
+        try {
+            Session session = sessionFactory.openSession();
+            UsersDAO dao = new UsersDAO(session);
+            UserService user = dao.getUserBySession(sessionString);
+            session.close();
+            return user;
+        } catch (HibernateException e) {
+            throw new DBException(e);
+        }
+    }
+
+    public void addUser(UserService user) throws DBException {
+        transaction(Task.ADDUSER, user.getLogin(), user.getEmail(), user.getPassword(), user.getSession(), null);
     }
 
     public void addUserBySession(String session, UserService userService) throws DBException {
@@ -43,63 +61,47 @@ public class DBService {
         return transaction(Task.CONTAINSUSERBYLOGIN, login, null, null, null, null);
     }
 
-    public void cleanUp() throws DBException {
-        UsersDAO dao = new UsersDAO(connection);
+    private boolean transaction(Task task, String login, String email, String password, String sessionString, UserService userService) throws DBException {
         try {
-            dao.dropTable();
-        } catch (SQLException e) {
-            throw new DBException(e);
-        }
-    }
-
-    private boolean transaction(Task task, String login, String email, String password, String session, UserService userService) throws DBException {
-        try {
-            connection.setAutoCommit(false);
-            UsersDAO dao = new UsersDAO(connection);
-            dao.createTable();
+            Session session = sessionFactory.openSession();
+            Transaction transaction = session.beginTransaction();
+            UsersDAO dao = new UsersDAO(session);
+            boolean check = false;
             if (task == Task.ADDUSER) {
-                dao.addUser(login, email, password);
+                dao.addUser(login, email, password, sessionString);
             } else if (task == Task.ADDUSERBYSESSION) {
-                dao.addUserBySession(session, userService);
+                dao.addUserBySession(sessionString, userService);
             } else if (task == Task.REMOVEUSERBYSESSION) {
-                dao.removeUserBySession(session);
+                dao.removeUserBySession(sessionString);
+            } else if (task == Task.CONTAINSUSERBYLOGIN) {
+                check = dao.containsUserByLogin(login);
             }
-            connection.commit();
-            return dao.containsUserByLogin(login);
-        } catch (SQLException e) {
-            try {
-                connection.rollback();
-            } catch (SQLException ignore) {
-            }
+            transaction.commit();
+            session.close();
+            return check;
+        } catch (HibernateException e) {
             throw new DBException(e);
-        } finally {
-            try {
-                connection.setAutoCommit(true);
-            } catch (SQLException ignore) {
-            }
         }
     }
 
-    public static Connection getMysqlConnection() {
-        try {
-            DriverManager.registerDriver((Driver) Class.forName("com.mysql.cj.jdbc.Driver").newInstance());
+    private Configuration getMySqlConfiguration() {
+        Configuration configuration = new Configuration();
+        configuration.addAnnotatedClass(UserService.class);
 
-            StringBuilder url = new StringBuilder();
+        configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5Dialect");
+        configuration.setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
+        configuration.setProperty("hibernate.connection.url", "jdbc:mysql://localhost:3306/javajdbc");
+        configuration.setProperty("hibernate.connection.username", "root");
+        configuration.setProperty("hibernate.connection.password", "root");
+        configuration.setProperty("hibernate.show_sql", hibernate_show_sql);
+        configuration.setProperty("hibernate.hbm2ddl.auto", hibernate_hbm2ddl_auto);
+        return configuration;
+    }
 
-            url.
-                    append("jdbc:mysql://").        //db type
-                    append("localhost:").           //host name
-                    append("3306/").                //port
-                    append("javajdbc?").          //db name
-                    append("user=root&").          //login
-                    append("password=root");       //password
-
-            System.out.println("URL: " + url + "\n");
-
-            return DriverManager.getConnection(url.toString());
-        } catch (SQLException | InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return null;
+    private static SessionFactory createSessionFactory(Configuration configuration) {
+        StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder();
+        builder.applySettings(configuration.getProperties());
+        ServiceRegistry serviceRegistry = builder.build();
+        return configuration.buildSessionFactory(serviceRegistry);
     }
 }

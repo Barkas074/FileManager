@@ -61,10 +61,10 @@ public class RegistrationServlet extends HttpServlet {
             e.printStackTrace();
         }
 
-        UserService user = new UserService(email, login, password);
         try {
+            UserService user = new UserService(email, login, password, null);
+            user.setSession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"));
             UserRepository.USER_REPOSITORY.addUser(user);
-            UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
         } catch (DBException e) {
             e.printStackTrace();
         }

@@ -1,53 +1,66 @@
 package org.example.dbService;
 
 import org.example.UserService;
+import org.hibernate.Criteria;
+import org.hibernate.HibernateException;
+import org.hibernate.Session;
+import org.hibernate.criterion.Restrictions;
+import org.hibernate.query.Query;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import javax.persistence.NoResultException;
+import javax.persistence.criteria.*;
 
 public class UsersDAO {
-    private final Executor executor;
+    private final Session session;
 
-    public UsersDAO(Connection connection) {
-        this.executor = new Executor(connection);
+    public UsersDAO(Session session) {
+        this.session = session;
     }
 
-    public UserService getUser(String filter, String arg) throws SQLException {
-        return executor.execQuery("SELECT email, login, password  FROM users WHERE " + filter + " = '" + arg + "'", result -> {
-            if (result.next()) {
-                return new UserService(
-                        result.getString("email"),
-                        result.getString("login"),
-                        result.getString("password")
-                );
-            } else {
-                return null;
-            }
-        });
+    public UserService getUser(String login) throws HibernateException {
+        return session.byNaturalId(UserService.class).using("login", login).load();
     }
 
-    public boolean containsUserByLogin(String login) throws SQLException {
-        return executor.execQuery("SELECT id FROM users WHERE login = '" + login + "'", ResultSet::next);
+    public UserService getUserBySession(String sessionString) throws HibernateException {
+        return processingUserBySession(sessionString);
     }
 
-    public void addUser(String login, String email, String password) throws SQLException {
-        executor.execUpdate("INSERT INTO users (login, email, password) values ('" + login + "', '" + email + "', '" + password + "')");
+    public boolean containsUserByLogin(String login) throws HibernateException {
+        UserService user = session.byNaturalId(UserService.class).using("login", login).load();
+        return user != null;
     }
 
-    public void addUserBySession(String session, UserService userService) throws SQLException {
-        executor.execUpdate("UPDATE users SET session = '" + session + "' WHERE login = '" + userService.getLogin() + "'");
+    public void addUser(String login, String email, String password, String sessionString) throws HibernateException {
+        session.save(new UserService(email, login, password, sessionString));
     }
 
-    public void removeUserBySession(String session) throws SQLException {
-        executor.execUpdate("UPDATE users SET session = " + null + " WHERE session = '" + session + "'");
+    public void addUserBySession(String sessionString, UserService userService) throws HibernateException {
+        userService.setSession(sessionString);
+        session.update(userService);
     }
 
-    public void createTable() throws SQLException {
-        executor.execUpdate("CREATE TABLE IF NOT EXISTS users (id bigint auto_increment, login varchar(256), email varchar(256), password varchar(256), session varchar(256), PRIMARY KEY (id))");
+    public void removeUserBySession(String sessionString) throws HibernateException {
+        UserService user = processingUserBySession(sessionString);
+        user.setSession(null);
+        session.update(user);
     }
 
-    public void dropTable() throws SQLException {
-        executor.execUpdate("DROP TABLE users");
+    private UserService processingUserBySession(String sessionString) {
+        CriteriaBuilder builder = session.getCriteriaBuilder();
+        CriteriaQuery<UserService> criteria = builder.createQuery(UserService.class);
+        Root<UserService> root = criteria.from(UserService.class);
+        ParameterExpression<String> sessionParam = builder.parameter(String.class);
+        criteria.select(root)
+                .where(builder.equal(root.get("session"), sessionParam));
+
+        Query<UserService> query = session.createQuery(criteria);
+        query.setParameter(sessionParam, sessionString);
+        UserService user = null;
+        try {
+            user = query.getSingleResult();
+        } catch (NoResultException nre) {
+            //Ignore this because as per your logic this is ok!
+        }
+        return user;
     }
 }

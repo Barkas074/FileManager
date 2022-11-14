@@ -12,7 +12,7 @@ public class UserRepository {
     public UserService getUserByCookies(Cookie[] cookies) throws DBException {
         String session = CookieUtil.getValue(cookies, "JSESSIONID");
 
-        return session == null ? null : dbService.getUser("session", session);
+        return session == null ? null : dbService.getUserBySession(session);
     }
 
     public void addUserBySession(String session, UserService user) throws DBException {
@@ -24,11 +24,11 @@ public class UserRepository {
     }
 
     public UserService getUserByLogin(String login) throws DBException {
-        return dbService.getUser("login", login);
+        return dbService.getUser(login);
     }
 
     public void addUser(UserService user) throws DBException {
-        dbService.addUser(user.getLogin(), user.getEmail(), user.getPassword());
+        dbService.addUser(user);
     }
 
     public boolean containsUserByLogin(String login) throws DBException {
