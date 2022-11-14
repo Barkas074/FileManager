@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.dbService.DBException;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -28,7 +30,12 @@ public class LoginServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        UserService user = null;
+        try {
+            user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         if (user != null) {
             resp.sendRedirect(req.getContextPath() + "/");
             return;
@@ -48,13 +55,22 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
-        UserService user = UserRepository.USER_REPOSITORY.getUserByLogin(login);
+        UserService user = null;
+        try {
+            user = UserRepository.USER_REPOSITORY.getUserByLogin(login);
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         if (user == null || !user.getPassword().equals(password)) {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
 
-        UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
+        try {
+            UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         resp.sendRedirect(req.getContextPath() + "/");
     }
 }

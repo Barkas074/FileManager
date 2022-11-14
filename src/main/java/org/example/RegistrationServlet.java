@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.dbService.DBException;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -28,7 +30,12 @@ public class RegistrationServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        UserService user = null;
+        try {
+            user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         if (user != null) {
             resp.sendRedirect(req.getContextPath() + "/");
             return;
@@ -45,13 +52,22 @@ public class RegistrationServlet extends HttpServlet {
         String email = req.getParameter("email");
         String password = req.getParameter("password");
 
-        if (login == null || email == null || password == null) {
-            return;
+        try {
+            if (UserRepository.USER_REPOSITORY.containsUserByLogin(login) || login == null || email == null || password == null) {
+                resp.sendRedirect(req.getContextPath() + "/registration");
+                return;
+            }
+        } catch (DBException e) {
+            e.printStackTrace();
         }
 
-        UserService user = new UserService(login, password, email);
-        UserRepository.USER_REPOSITORY.addUser(user);
-        UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
+        UserService user = new UserService(email, login, password);
+        try {
+            UserRepository.USER_REPOSITORY.addUser(user);
+            UserRepository.USER_REPOSITORY.addUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"), user);
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         resp.sendRedirect(req.getContextPath() + "/");
     }
 }

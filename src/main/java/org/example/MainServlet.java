@@ -1,6 +1,7 @@
 package org.example;
 
 import org.apache.commons.io.FileUtils;
+import org.example.dbService.DBException;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
@@ -19,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-@WebServlet(urlPatterns = "")
+@WebServlet(urlPatterns = "/")
 public class MainServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -38,7 +39,12 @@ public class MainServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        UserService user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        UserService user = null;
+        try {
+            user = UserRepository.USER_REPOSITORY.getUserByCookies(req.getCookies());
+        } catch (DBException e) {
+            e.printStackTrace();
+        }
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login");
             return;
@@ -74,13 +80,17 @@ public class MainServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         if (req.getParameter("exit") != null) {
-            UserRepository.USER_REPOSITORY.removeUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"));
+            try {
+                UserRepository.USER_REPOSITORY.removeUserBySession(CookieUtil.getValue(req.getCookies(), "JSESSIONID"));
+            } catch (DBException e) {
+                e.printStackTrace();
+            }
             CookieUtil.addCookie(resp, "JSESSIONID", null);
             resp.sendRedirect(req.getContextPath() + "/login");
         }
     }
 
-    private void showFiles(HttpServletRequest req, Path currentPath) throws IOException{
+    private void showFiles(HttpServletRequest req, Path currentPath) throws IOException {
         File[] allFiles = currentPath.toFile().listFiles();
         if (allFiles == null) {
             return;

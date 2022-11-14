@@ -1,32 +1,37 @@
 package org.example;
 
+import org.example.dbService.DBException;
+import org.example.dbService.DBService;
+
 import javax.servlet.http.Cookie;
-import java.util.HashMap;
-import java.util.Map;
 
 public class UserRepository {
     public static final UserRepository USER_REPOSITORY = new UserRepository();
-    private final Map<String, UserService> usersBySession = new HashMap<>();
-    private final Map<String, UserService> usersByLogin = new HashMap<>();
+    DBService dbService = new DBService();
 
-    public UserService getUserByCookies(Cookie[] cookies) {
+    public UserService getUserByCookies(Cookie[] cookies) throws DBException {
         String session = CookieUtil.getValue(cookies, "JSESSIONID");
-        return session == null ? null : usersBySession.get(session);
+
+        return session == null ? null : dbService.getUser("session", session);
     }
 
-    public void addUserBySession(String session, UserService user) {
-        usersBySession.put(session, user);
+    public void addUserBySession(String session, UserService user) throws DBException {
+        dbService.addUserBySession(session, user);
     }
 
-    public void removeUserBySession(String session) {
-        usersBySession.remove(session);
+    public void removeUserBySession(String session) throws DBException {
+        dbService.removeUserBySession(session);
     }
 
-    public UserService getUserByLogin(String login) {
-        return usersByLogin.get(login);
+    public UserService getUserByLogin(String login) throws DBException {
+        return dbService.getUser("login", login);
     }
 
-    public void addUser(UserService user) {
-        usersByLogin.put(user.getLogin(), user);
+    public void addUser(UserService user) throws DBException {
+        dbService.addUser(user.getLogin(), user.getEmail(), user.getPassword());
+    }
+
+    public boolean containsUserByLogin(String login) throws DBException {
+        return dbService.containsUserByLogin(login);
     }
 }
